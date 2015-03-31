@@ -70,11 +70,14 @@ class UtpTracer(object):
             if type != ST_SYN and flow.state == CS_SYN_ACKED:
                 flow.connid += 1
 
-            if connid + 1 != flow.connid and type == ST_RESET:
+            if (type != ST_RESET and connid != flow.connid) or \
+               (type == ST_RESET and connid + 1 != flow.connid):
                 print 'Invalid connid.'
-                return
-            elif connid != flow.connid and type != ST_RESET:
-                print 'Invalid connid.'
+                if flow.state == CS_HANDSHAKE:
+                    del self.flows[src, sport, dst, dport]
+                    if (dst, dport, src, sport) in self.flows:
+                        del self.flows[dst, dport, src, sport]
+                    print 'Removed invalid connection from the flow table.'
                 return
 
             if type == ST_DATA:
