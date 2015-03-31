@@ -149,7 +149,7 @@ class UtpTracer(object):
                         return
 
                 self.flows[src, sport, dst, dport] = flow
-                print 'New flow.'
+                print 'New flow: {}:{} => {}:{}'.format(src, sport, dst, dport)
             elif type == ST_STATE:
                 r_src, r_sport, r_dst, r_dport = dst, dport, src, sport
                 r_flow = self.flows.get((r_src, r_sport, r_dst, r_dport), None)
