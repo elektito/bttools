@@ -170,19 +170,19 @@ class UtpTracer(object):
                 print 'We should not have reached here. Something is seriously wrong!'
                 return
 
-    def add_data(self, piece, flow):
-        print 'PIECE:', len(piece), 'byte(s) received.'
+    def add_data(self, segment, flow):
+        print 'SEGMENT:', len(segment), 'byte(s) received.'
         flow.seq = (flow.seq + 1) % 0xffff
 
         global total
-        total += len(piece)
+        total += len(segment)
 
         added_some = True
         while added_some:
             added_some = False
             for payload, seq in flow.pending:
                 if seq == flow.seq:
-                    print 'PIECE (WAS PENDING): Added', len(payload), 'byte(s)'
+                    print 'SEGMENT (WAS PENDING): Added', len(payload), 'byte(s)'
                     flow.seq = (flow.seq + 1) % 0xffff
                     added_some = True
 
