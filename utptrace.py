@@ -22,7 +22,7 @@ total = 0
 class UtpFlow(object):
     def __init__(self, src, sport, dst, dport, connid, seq):
         self.connid = connid
-        self.seq = seq + 1
+        self.seq = seq
         self.state = CS_HANDSHAKE
         self.pending = []
         self.src = src
@@ -144,7 +144,7 @@ class UtpTracer(object):
                     return
 
             if type == ST_SYN:
-                flow = UtpFlow(src, sport, dst, dport, connid, seq)
+                flow = UtpFlow(src, sport, dst, dport, connid, seq + 1)
 
                 r_flow = self.flows.get((dst, dport, src, sport), None)
                 if r_flow:
