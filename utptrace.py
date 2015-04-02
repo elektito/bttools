@@ -20,11 +20,15 @@ CS_PENDING = 0x5
 total = 0
 
 class UtpFlow(object):
-    def __init__(self, connid, seq):
+    def __init__(self, src, sport, dst, dport, connid, seq):
         self.connid = connid
         self.seq = seq + 1
         self.state = CS_HANDSHAKE
         self.pending = []
+        self.src = src
+        self.sport = sport
+        self.dst = dst
+        self.dport = dport
 
     def __repr__(self):
         return '<UtpFlow connid={}>'.format(self.connid)
@@ -140,7 +144,7 @@ class UtpTracer(object):
                     return
 
             if type == ST_SYN:
-                flow = UtpFlow(connid, seq)
+                flow = UtpFlow(src, sport, dst, dport, connid, seq)
 
                 r_flow = self.flows.get((dst, dport, src, sport), None)
                 if r_flow:
@@ -162,7 +166,7 @@ class UtpTracer(object):
                 if connid != r_flow.connid:
                     print 'Connedtion IDs do not match.'
                     return
-                flow = UtpFlow(connid, seq)
+                flow = UtpFlow(src, sport, dst, dport, connid, seq)
                 self.flows[src, sport, dst, dport] = flow
                 r_flow.state = CS_SYN_ACKED
                 print 'SYN acknowledged.'
