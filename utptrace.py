@@ -4,6 +4,7 @@ logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
 from scapy.all import RawPcapReader, Ether, IP, UDP
 from random import randint
+import os
 
 ST_DATA = 0x0
 ST_FIN = 0x1
@@ -25,6 +26,8 @@ class UtpFlow(object):
         self.seq = seq
         self.state = CS_HANDSHAKE
         self.pending = []
+        self.first_segment = True
+        self.filename = ''
         self.src = src
         self.sport = sport
         self.dst = dst
@@ -176,6 +179,17 @@ class UtpTracer(object):
 
     def add_data(self, segment, flow):
         print 'SEGMENT:', len(segment), 'byte(s) received.'
+        if flow.first_segment:
+            flow.filename = 'stream-{}-{}-{}-{}'.format(flow.src, flow.sport, flow.dst, flow.dport)
+            ext = ''
+            n = 1
+            while os.path.exists(flow.filename + ext):
+                ext = '.{}'.format(n)
+                n += 1
+            flow.filename += ext
+        with open(flow.filename, 'w' if flow.first_segment else 'a') as f:
+            f.write(segment)
+        flow.first_segment = False
         flow.seq = (flow.seq + 1) % 0xffff
 
         global total
