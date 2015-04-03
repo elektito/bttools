@@ -135,9 +135,10 @@ def parser_message_extended(stream, n, length):
         print 'EXTENDED: UNKNOWN MESSAGE ID:', id
         return
 
-@register_extended_message('foo')
+@register_extended_message('lt_tex')
 def parse_message_foo(stream, n, length):
-    pass
+    lt_tex = bencode.bdecode(stream[n+6:n+length+4])
+    print 'lt_tex: announced {} tracker(s).'.format(len(lt_tex['added']))
 
 def parse_message(stream, n):
     length = ntohl(struct.unpack('I', stream[n:n + 4])[0])
