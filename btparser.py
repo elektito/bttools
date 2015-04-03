@@ -67,7 +67,7 @@ def parse_message_choke(stream, n, length):
 def parse_message_piece(stream, n, length):
     index = ntohl(struct.unpack('I', stream[n:n+4])[0])
     begin = ntohl(struct.unpack('I', stream[n+4:n+8])[0])
-    print 'PIECE: index={} begin={} block_size={}'.format(index, begin, length - 5 - 4)
+    print 'PIECE: index={} begin={} block_size={}'.format(index, begin, length - 1 - 8)
 
 @register_message(8)
 def parse_message_choke(stream, n, length):
