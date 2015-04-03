@@ -140,6 +140,20 @@ def parse_message_foo(stream, n, length):
     lt_tex = bencode.bdecode(stream[n+6:n+length+4])
     print 'lt_tex: announced {} tracker(s).'.format(len(lt_tex['added']))
 
+@register_extended_message('ut_pex')
+def parse_message_foo(stream, n, length):
+    ut_pex = bencode.bdecode(stream[n+6:n+length+4])
+    added = ut_pex['added']
+    prefer_encryption = len([i for i in ut_pex['added.f'] if ord(i) & 0x01 == 1])
+    seeders = len([i for i in ut_pex['added.f'] if ord(i) & 0x02 == 1])
+    print 'ut_pex: added {} peers ({} prefer(s) encryption; {} is/are seeder(s)). dropped {}.'.format(len(added), prefer_encryption, seeders, len(ut_pex['dropped']))
+
+    if all(k in ut_pex for k in ['added6', 'added6.f', 'dropped6']):
+        added = ut_pex['added6']
+        prefer_encryption = len([i for i in ut_pex['added6.f'] if ord(i) & 0x01 == 1])
+        seeders = len([i for i in ut_pex['added6.f'] if ord(i) & 0x02 == 1])
+        print '        also added {} IPv6 peers ({} prefer(s) encryption; {} is/are seeder(s)). dropped {}.'.format(len(added), prefer_encryption, seeders, len(ut_pex['dropped6']))
+
 def parse_message(stream, n):
     length = ntohl(struct.unpack('I', stream[n:n + 4])[0])
     if length == 0:
