@@ -82,7 +82,7 @@ def parse_message_port(stream, n, length):
     print 'DHT Port:', port
 
 @register_message(0x0d)
-def parse_message_have_all(stream, n, length):
+def parse_message_suggest_piece(stream, n, length):
     index = ntohl(struct.unpack('I', stream[n:n+4])[0])
     print 'SUGGEST PIECE:', index
 
@@ -91,18 +91,18 @@ def parse_message_have_all(stream, n, length):
     print 'HAVE ALL'
 
 @register_message(0x0f)
-def parse_message_have_all(stream, n, length):
+def parse_message_have_none(stream, n, length):
     print 'HAVE NONE'
 
 @register_message(0x10)
-def parse_message_have_all(stream, n, length):
+def parse_message_reject(stream, n, length):
     index = ntohl(struct.unpack('I', stream[n:n+4])[0])
     begin = ntohl(struct.unpack('I', stream[n+4:n+8])[0])
     length = ntohl(struct.unpack('I', stream[n+8:n+12])[0])
     print 'REJECT:', index, begin, length
 
 @register_message(0x11)
-def parse_message_have_all(stream, n, length):
+def parse_message_allowed_fast(stream, n, length):
     index = ntohl(struct.unpack('I', stream[n:n+4])[0])
     print 'ALLOWED FAST:', index
 
