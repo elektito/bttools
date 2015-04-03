@@ -46,44 +46,44 @@ def parse_message_choke(stream, n, length):
 
 @register_message(4)
 def parse_message_choke(stream, n, length):
-    index = ntohl(struct.unpack('I', stream[n:n+4])[0])
+    index = ntohl(struct.unpack('I', stream[n+5:n+9])[0])
     print 'HAVE:', index
 
 @register_message(5)
 def parse_message_choke(stream, n, length):
-    print 'BITFIELD:', ''.join(bin(ord(i))[2:] for i in stream[n:n + length - 5])
+    print 'BITFIELD:', ''.join(bin(ord(i))[2:] for i in stream[n+5:n+length])
 
 @register_message(6)
 def parse_message_choke(stream, n, length):
-    if n + 11 > len(stream):
+    if n + 17 >= len(stream):
         print 'Unexpected end of stream.'
         exit(1)
-    index = ntohl(struct.unpack('I', stream[n:n+4])[0])
-    begin = ntohl(struct.unpack('I', stream[n+4:n+8])[0])
-    length = ntohl(struct.unpack('I', stream[n+8:n+12])[0])
+    index = ntohl(struct.unpack('I', stream[n+5:n+9])[0])
+    begin = ntohl(struct.unpack('I', stream[n+9:n+13])[0])
+    length = ntohl(struct.unpack('I', stream[n+13:n+17])[0])
     print 'REQUEST: index={} begin={} length={}'.format(index, begin, length)
 
 @register_message(7)
 def parse_message_piece(stream, n, length):
-    index = ntohl(struct.unpack('I', stream[n:n+4])[0])
-    begin = ntohl(struct.unpack('I', stream[n+4:n+8])[0])
+    index = ntohl(struct.unpack('I', stream[n+5:n+9])[0])
+    begin = ntohl(struct.unpack('I', stream[n+9:n+13])[0])
     print 'PIECE: index={} begin={} block_size={}'.format(index, begin, length - 1 - 8)
 
 @register_message(8)
 def parse_message_choke(stream, n, length):
-    index = ntohl(struct.unpack('I', stream[n:n+4])[0])
-    begin = ntohl(struct.unpack('I', stream[n+4:n+8])[0])
-    length = ntohl(struct.unpack('I', stream[n+8:n+12])[0])
+    index = ntohl(struct.unpack('I', stream[n+5:n+9])[0])
+    begin = ntohl(struct.unpack('I', stream[n+9:n+13])[0])
+    length = ntohl(struct.unpack('I', stream[n+13:n+17])[0])
     print 'CANCEL: index={} begin={} length={}'.format(index, begin, length)
 
 @register_message(9)
 def parse_message_port(stream, n, length):
-    port = ntohs(struct.unpack('H', stream[n:n+2])[0])
+    port = ntohs(struct.unpack('H', stream[n+5:n+7])[0])
     print 'DHT Port:', port
 
 @register_message(0x0d)
 def parse_message_suggest_piece(stream, n, length):
-    index = ntohl(struct.unpack('I', stream[n:n+4])[0])
+    index = ntohl(struct.unpack('I', stream[n+5:n+9])[0])
     print 'SUGGEST PIECE:', index
 
 @register_message(0x0e)
@@ -96,18 +96,19 @@ def parse_message_have_none(stream, n, length):
 
 @register_message(0x10)
 def parse_message_reject(stream, n, length):
-    index = ntohl(struct.unpack('I', stream[n:n+4])[0])
-    begin = ntohl(struct.unpack('I', stream[n+4:n+8])[0])
-    length = ntohl(struct.unpack('I', stream[n+8:n+12])[0])
+    index = ntohl(struct.unpack('I', stream[n+5:n+9])[0])
+    begin = ntohl(struct.unpack('I', stream[n+9:n+13])[0])
+    length = ntohl(struct.unpack('I', stream[n+13:n+17])[0])
     print 'REJECT:', index, begin, length
 
 @register_message(0x11)
 def parse_message_allowed_fast(stream, n, length):
-    index = ntohl(struct.unpack('I', stream[n:n+4])[0])
+    index = ntohl(struct.unpack('I', stream[n+5:n+9])[0])
     print 'ALLOWED FAST:', index
 
 @register_message(20)
 def parser_message_extended(stream, n, length):
+    n += 5
     id = ord(stream[n])
     n += 1
     if id == 0:
@@ -129,7 +130,7 @@ def parser_message_extended(stream, n, length):
         if name not in extended_message_parsers:
             print 'EXTENDED: UNKNOWN EXTENSION PROTOCOL:', name
             return
-        extended_message_parsers[name](stream[1:], n, length - 1)
+        extended_message_parsers[name](stream, n - 6, length)
     else:
         print 'EXTENDED: UNKNOWN MESSAGE ID:', id
         return
@@ -146,7 +147,7 @@ def parse_message(stream, n):
     id = ord(stream[n + 4])
 
     try:
-        message_parsers[id](stream, n + 5, length)
+        message_parsers[id](stream, n, length)
     except KeyError as e:
         print 'UNKNOWN MESSAGE ID:', id
 
