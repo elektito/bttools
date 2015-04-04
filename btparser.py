@@ -154,6 +154,11 @@ def parse_message_foo(stream, n, length):
         seeders = len([i for i in ut_pex['added6.f'] if ord(i) & 0x02 == 1])
         print '        also added {} IPv6 peers ({} prefer(s) encryption; {} is/are seeder(s)). dropped {}.'.format(len(added), prefer_encryption, seeders, len(ut_pex['dropped6']))
 
+@register_extended_message('upload_only')
+def parse_message_foo(stream, n, length):
+    payload = stream[n+6:n+length+4]
+    print 'upload_only: turned', 'off' if payload[0] == '\x00' else 'on'
+
 def parse_message(stream, n):
     length = ntohl(struct.unpack('I', stream[n:n + 4])[0])
     if length == 0:
