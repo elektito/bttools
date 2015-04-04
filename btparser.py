@@ -148,7 +148,8 @@ def parse_message_foo(stream, n, length):
     seeders = len([i for i in ut_pex['added.f'] if ord(i) & 0x02 == 1])
     print 'ut_pex: added {} peers ({} prefer(s) encryption; {} is/are seeder(s)). dropped {}.'.format(len(added), prefer_encryption, seeders, len(ut_pex['dropped']))
 
-    if all(k in ut_pex for k in ['added6', 'added6.f', 'dropped6']):
+    if all(k in ut_pex for k in ['added6', 'added6.f', 'dropped6']) and \
+       (len(ut_pex['added6']) > 0 or len(ut_pex['dropped6']) > 0):
         added = ut_pex['added6']
         prefer_encryption = len([i for i in ut_pex['added6.f'] if ord(i) & 0x01 == 1])
         seeders = len([i for i in ut_pex['added6.f'] if ord(i) & 0x02 == 1])
