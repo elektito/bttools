@@ -3,8 +3,8 @@ import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
 from scapy.all import RawPcapReader, Ether, IP, UDP
-from random import randint
 import os
+from socket import ntohs
 
 ST_DATA = 0x0
 ST_FIN = 0x1
