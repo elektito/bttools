@@ -335,8 +335,9 @@ class UtpTracer(object):
                 state_machine[CS_INIT, type, False](
                     self, flow, payload, src, sport, dst, dport, connid, seq)
         except KeyError as e:
-            #print 'not found:', e
-            pass
+            self.logger.debug(
+                'State not found in the state machine: state={} type={} existing={}'.format(
+                    flow.state if flow else CS_INIT, type, flow != None))
 
     def add_segment(self, flow, direction, payload, seq):
         fseq = flow.seq0 if direction == 0 else flow.seq1
