@@ -362,7 +362,7 @@ class UtpTracer(object):
             added_some = False
             for payload, seq in flow.pending:
                 if seq == fseq:
-                    print 'SEGMENT (WAS PENDING): Added', len(payload), 'byte(s)'
+                    self.logger.info('Pending segment added: {} byte(s)'.format(len(payload)))
                     if direction == 0:
                         fseq = flow.seq0 = (flow.seq0 + 1) % 0xffff
                     else:
@@ -373,7 +373,7 @@ class UtpTracer(object):
         reader = RawPcapReader(pcap_file)
         i = 1
         for pkt_data in reader:
-            print i
+            self.logger.info('{}'.format(i))
             i += 1
             p = Ether(pkt_data[0])
             if isinstance(p[1], IP) and isinstance(p[2], UDP):
@@ -397,7 +397,7 @@ class MyUtpTracer(UtpTracer):
     def new_segment(self, flow, direction, segment):
         self.segments += 1
         self.data += len(segment)
-        print len(segment), 'byte(s) received.'
+        self.logger.info('{} byte(s) received.'.format(len(segment)))
 
         if (flow.tup, direction) in self.filenames:
             filename = self.filenames[flow.tup, direction]
