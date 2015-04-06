@@ -12,7 +12,7 @@ class BitTorrentParserError(Exception):
 
 class UnexpectedEndOfStreamError(BitTorrentParserError):
     def __init__(self, msg='Unexpected end of stream.'):
-        super(UnexpectedEndOfStreamError, self).__init__()
+        super(UnexpectedEndOfStreamError, self).__init__(msg)
 
 class InvalidBitTorrentStreamError(BitTorrentParserError):
     def __init__(self, msg='Invalid BitTorrent stream.'):
@@ -76,6 +76,9 @@ class BitTorrentParser(object):
             n = self.parse_message(stream, n)
 
     def parse_message(self, stream, n):
+        if n + 4 > len(stream):
+            raise UnexpectedEndOfStreamError()
+
         length = ntohl(struct.unpack('I', stream[n:n + 4])[0])
         if length == 0:
             return n + 4
@@ -83,6 +86,9 @@ class BitTorrentParser(object):
         id = ord(stream[n + 4])
 
         try:
+            if n + 4 + length > len(stream):
+                raise UnexpectedEndOfStreamError()
+
             message_parsers[id](self, stream, n, length)
         except KeyError as e:
             print 'UNKNOWN MESSAGE ID:', id
@@ -197,8 +203,6 @@ class BitTorrentParser(object):
 
     @register_message(6)
     def parse_message_request(self, stream, n, length):
-        if n + 17 >= len(stream):
-            raise UnexpectedEndOfStreamError()
         index = ntohl(struct.unpack('I', stream[n+5:n+9])[0])
         begin = ntohl(struct.unpack('I', stream[n+9:n+13])[0])
         length = ntohl(struct.unpack('I', stream[n+13:n+17])[0])
