@@ -318,14 +318,12 @@ class UtpTracer(object):
         flow = self.flows.get((src, sport, dst, dport), None)
         if flow:
             if type != ST_SYN and connid != (flow.connid + 1) % 0xffff:
-                print 0, connid, flow.connid
                 self.logger.warning('Invalid connid.')
                 return
         else:
             flow = self.flows.get((dst, dport, src, sport), None)
             if flow:
                 if type != ST_SYN and connid != flow.connid:
-                    print 1, connid, flow.connid
                     self.logger.warning('Invalid connid.')
                     return
 
