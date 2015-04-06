@@ -11,8 +11,8 @@ class BitTorrentParserError(Exception):
     pass
 
 class UnexpectedEndOfStreamError(BitTorrentParserError):
-    def __init__(self):
-        super(UnexpectedEndOfStreamError, self).__init__('Unexpected end of stream.')
+    def __init__(self, msg='Unexpected end of stream.'):
+        super(UnexpectedEndOfStreamError, self).__init__()
 
 class InvalidBitTorrentStreamError(BitTorrentParserError):
     def __init__(self, msg='Invalid BitTorrent stream.'):
@@ -55,29 +55,23 @@ class BitTorrentParser(object):
         self.infos[str(hashlib.sha1(bencode.bencode(info)))] = info
 
     def parse_stream(self, stream):
-        pstrlen = ord(stream[0])
-        pstr = stream[1:pstrlen + 1]
+        if len(stream) < 68:
+            raise UnexpectedEndOfStreamError(
+                'The stream is less than 68 bytes long.')
 
-        if pstr != 'BitTorrent protocol':
+        pstrlen, pstr, reserved, infohash, peerid = struct.unpack('!B19s8s20s20s', stream[:68])
+
+        if pstrlen != 19 or pstr != 'BitTorrent protocol':
             msg = 'Stream does not contain BitTorrent data.'
             self.logger.error(msg)
             raise InvalidBitTorrentStreamError(msg)
 
         self.logger.info('pstr: {}'.format(pstr))
-
-        n = 1 + pstrlen
-        reserved = stream[n:n + 8]
         self.logger.info('reserved: {}'.format(reserved.encode('hex')))
-        n += 8
-
-        infohash = stream[n:n + 20]
         self.logger.info('infohash: {}'.format(infohash.encode('hex')))
-        n += 20
-
-        peerid = stream[n:n + 20]
         self.logger.info('peerid: {}'.format(peerid.encode('hex')))
-        n += 20
 
+        n = 68
         while n < len(stream):
             n = self.parse_message(stream, n)
 
