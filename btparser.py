@@ -91,7 +91,7 @@ class BitTorrentParser(object):
 
             message_parsers[id](self, stream, n, length)
         except KeyError as e:
-            self.logging.warning('[MESSAGE] UNKNOWN MESSAGE ID: {}'.format(id))
+            self.logger.warning('[MESSAGE] UNKNOWN MESSAGE ID: {}'.format(id))
             self.__new_message('unknown', message_id=id)
 
         return n + length + 4
@@ -166,7 +166,7 @@ class BitTorrentParser(object):
                 return
             extended_message_parsers[name](self, stream, n - 6, length)
         else:
-            self.logging.warning(
+            self.logger.warning(
                 '[MESSAGE] [EXTENDED] UNKNOWN MESSAGE ID: {}'.format(id))
             # this is not a valid message (the id used has not been
             # defined in the handshake), so we won't call
