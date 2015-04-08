@@ -352,22 +352,34 @@ class UtpTracer(object):
             self.logger.info('New segment arrived from the {}.'.format(
                 'initiator' if direction == 0 else 'accepter'))
         elif seq > fseq:
-            flow.pending.append((payload[20:], seq))
+            flow.pending.append((payload[20:], seq, direction))
             self.logger.debug('Out of order packet. Added to pending list.')
         else: # seq < fseq
             self.logger.debug('Duplicate packet. Ignored.')
 
         added_some = True
+        removed = []
         while added_some:
             added_some = False
-            for payload, seq in flow.pending:
-                if seq == fseq:
-                    self.logger.info('Pending segment added: {} byte(s)'.format(len(payload)))
-                    if direction == 0:
-                        fseq = flow.seq0 = (flow.seq0 + 1) % 0xffff
-                    else:
-                        fseq = flow.seq1 = (flow.seq1 + 1) % 0xffff
-                    added_some = True
+            i = 0
+            for payload, seq, direction in flow.pending:
+                if direction == 0:
+                    if seq == flow.seq0:
+                        self.new_segment(flow, direction, payload)
+                        self.logger.info('Pending segment added: {} byte(s)'.format(len(payload)))
+                        flow.seq0 = (flow.seq0 + 1) % 0xffff
+                        added_some = True
+                        removed.append(i)
+                else:
+                    if seq == flow.seq1:
+                        self.new_segment(flow, direction, payload)
+                        self.logger.info('Pending segment added: {} byte(s)'.format(len(payload)))
+                        flow.seq1 = (flow.seq1 + 1) % 0xffff
+                        added_some = True
+                        removed.append(i)
+                i += 1
+
+        flow.pending = [i for j, i in enumerate(flow.pending) if j not in flow.pending]
 
     def trace_pcap(self, pcap_file):
         reader = RawPcapReader(pcap_file)
