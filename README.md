@@ -15,6 +15,11 @@ script and fed a PCAP file to trace all uTP streams in it and write
 them to disk, or it can be fed packets incrementally and receive
 stream segments in callbacks.
 
+## tcptrace
+
+This module is very similar to utptrace, only it works for TCP. Not
+strictly BitTorrent related but may come handy.
+
 ## btparser
 
 btparser parses BitTorrent streams. An output file of utptrace can be
