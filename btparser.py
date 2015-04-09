@@ -86,6 +86,8 @@ class BitTorrentParser(object):
         id = ord(stream[n + 4])
 
         try:
+            if length > 16393:
+                self.logger.warning('Message length is over 16393. Possibly corrupt.')
             if n + 4 + length > len(stream):
                 raise UnexpectedEndOfStreamError()
 
