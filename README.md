@@ -1,7 +1,8 @@
 # Overview
 
 bttools is a set of Python tools for experimenting with the BitTorrent
-protocol. It current consists of two tools: utptrace and btparser.
+protocol. It currently consists of three tools: utptrace, tcptrace and
+btparser.
 
 ## utptrace
 
