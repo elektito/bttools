@@ -128,7 +128,7 @@ class UtpTracer(object):
     @on_state(CS_HANDSHAKE)
     @on_packet_type(ST_STATE)
     @on_existing_flow(True)
-    def actin(self, flow, payload, src, sport, dst, dport, connid, seq):
+    def action(self, flow, payload, src, sport, dst, dport, connid, seq):
         if (src, sport, dst, dport) == flow.tup:
             self.logger.warning('Expected SYN ACK. Ignored.')
             return
@@ -140,7 +140,7 @@ class UtpTracer(object):
     @on_state(CS_HANDSHAKE)
     @on_packet_type(ST_SYN)
     @on_existing_flow(True)
-    def actin(self, flow, payload, src, sport, dst, dport, connid, seq):
+    def action(self, flow, payload, src, sport, dst, dport, connid, seq):
         if (src, sport, dst, dport) == flow.tup:
             self.logger.debug('Duplicate SYN.')
             return
