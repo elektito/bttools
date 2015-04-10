@@ -2,6 +2,8 @@
 import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
+from serial import SerialNumber
+
 from scapy.all import RawPcapReader, Ether, IP, TCP
 import os
 
@@ -69,7 +71,7 @@ class TcpTracer(object):
         if not flags & FG_SYN:
             self.logger.warning('Packet from incomplete flow. Ignored.')
             return
-        flow = TcpFlow(src, sport, dst, dport, (seq + 1) % 0xffffffff)
+        flow = TcpFlow(src, sport, dst, dport, seq + 1)
         flow.state = CS_INITIATOR_SENT_SYN
         self.flows[src, sport, dst, dport] = flow
         self.new_flow(flow)
@@ -79,7 +81,7 @@ class TcpTracer(object):
         if flow.tup == (dst, dport, src, sport):
             if flags & FG_SYN and flags & FG_ACK:
                 flow.state = CS_SYN_ACKED
-                flow.seq1 = (seq + 1) % 0xffffffff
+                flow.seq1 = seq + 1
                 self.logger.debug('SYN ACKED')
             else:
                 self.logger.debug('Expected SYN ACK. Ignored.')
@@ -105,11 +107,11 @@ class TcpTracer(object):
         if flags & FG_FIN:
             if (src, sport, dst, dport) == flow.tup:
                 flow.state = CS_INITIATOR_SENT_FIN
-                flow.seq0 = (flow.seq0 + 1) % 0xffffffff
+                flow.seq0 += 1
                 self.logger.debug('Initiator sent FIN.')
             else:
                 flow.state = CS_ACCEPTER_SENT_FIN
-                flow.seq1 = (flow.seq1 + 1) % 0xffffffff
+                flow.seq1 += 1
                 self.logger.debug('Accepter sent FIN.')
             return
 
@@ -125,7 +127,7 @@ class TcpTracer(object):
         if flow.tup == (dst, dport, src, sport) and flags & FG_ACK:
             if flags & FG_FIN:
                 flow.state = CS_BOTH_SENT_FIN_INITIATOR_ACKED
-                flow.seq1 = (flow.seq1 + 1) % 0xffffffff
+                flow.seq1 += 1
                 self.logger.debug('Both sent FIN and initiator\'s was acked.')
             else:
                 flow.state = CS_INITIATOR_FIN_ACKED
@@ -136,7 +138,7 @@ class TcpTracer(object):
         if flow.tup == (src, sport, dst, dport) and flags & FG_ACK:
             if flags & FG_FIN:
                 flow.state = CS_BOTH_SENT_FIN_ACCEPTER_ACKED
-                flow.seq0 = (flow.seq0 + 1) % 0xffffffff
+                flow.seq0 += 1
                 self.logger.debug('Both sent FIN and accepter\'s was acked.')
             else:
                 flow.state = CS_ACCEPTER_FIN_ACKED
@@ -146,14 +148,14 @@ class TcpTracer(object):
     def action(self, flow, payload, src, sport, dst, dport, seq):
         if flow.tup == (dst, dport, src, sport) and flags & FG_FIN:
             flow.state = CS_BOTH_SENT_FIN_INITIATOR_ACKED
-            flow.seq1 = (flow.seq1 + 1) % 0xffffffff
+            flow.seq1 += 1
             self.logger.debug('Both sent FIN and initiator\'s was acked.')
 
     @on_state(CS_ACCEPTER_FIN_ACKED)
     def action(self, flow, payload, src, sport, dst, dport, flags, seq):
         if flow.tup == (src, sport, dst, dport):
             flow.state = CS_BOTH_SENT_FIN_ACCEPTER_ACKED
-            flow.seq0 = (flow.seq0 + 1) % 0xffffffff
+            flow.seq0 += 1
             self.logger.debug('Both sent FIN and accepter\'s was acked.')
 
     @on_state(CS_BOTH_SENT_FIN_INITIATOR_ACKED)
@@ -178,7 +180,7 @@ class TcpTracer(object):
     def action(self, flow, payload, src, sport, dst, dport, flags, seq):
         if (dst, dport, src, sport) == flow.tup and flags & FG_FIN:
             flow.state = CS_BOTH_SENT_FIN
-            flow.seq1 = (flow.seq1 + 1) % 0xffffffff
+            flow.seq1 += 1
             self.logger.debug('Both sent FIN.')
 
     @on_state(CS_BOTH_SENT_FIN)
@@ -238,7 +240,7 @@ class TcpTracer(object):
         except IndexError:
             payload = ''
 
-        seq = pkt[2].seq
+        seq = SerialNumber(pkt[2].seq, 32)
         flags = pkt[2].flags
 
         flow = self.flows.get((src, sport, dst, dport), None)
@@ -266,9 +268,9 @@ class TcpTracer(object):
             self.new_segment(flow, direction, payload)
 
             if direction == 0:
-                flow.seq0 = (flow.seq0 + len(payload)) % 0xffffffff
+                flow.seq0 += len(payload)
             else:
-                flow.seq1 = (flow.seq1 + len(payload)) % 0xffffffff
+                flow.seq1 += len(payload)
 
             self.logger.info('New segment arrived from the {}.'.format(
                 'initiator' if direction == 0 else 'accepter'))
@@ -288,14 +290,14 @@ class TcpTracer(object):
                     if seq == flow.seq0:
                         self.new_segment(flow, direction, payload)
                         self.logger.info('Pending segment added: {} byte(s)'.format(len(payload)))
-                        flow.seq0 = (flow.seq0 + len(payload)) % 0xffffffff
+                        flow.seq0 += len(payload)
                         added_some = True
                         removed.append(i)
                 else:
                     if seq == flow.seq1:
                         self.new_segment(flow, direction, payload)
                         self.logger.info('Pending segment added: {} byte(s)'.format(len(payload)))
-                        flow.seq1 = (flow.seq1 + len(payload)) % 0xffffffff
+                        flow.seq1 += len(payload)
                         added_some = True
                         removed.append(i)
                 i += 1

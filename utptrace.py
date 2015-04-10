@@ -2,6 +2,8 @@
 import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
+from serial import SerialNumber
+
 from scapy.all import RawPcapReader, Ether, IP, UDP
 import os
 
@@ -309,6 +311,7 @@ class UtpTracer(object):
 
         seq = (ord(payload[16]) << 8) | \
               (ord(payload[17]) << 0)
+        seq = SerialNumber(seq, 16)
 
         flow = self.flows.get((src, sport, dst, dport), None)
         if flow:
@@ -340,9 +343,9 @@ class UtpTracer(object):
             self.new_segment(flow, direction, payload[20:])
 
             if direction == 0:
-                flow.seq0 = (flow.seq0 + 1) % 0xffff
+                flow.seq0 += 1
             else:
-                flow.seq1 = (flow.seq1 + 1) % 0xffff
+                flow.seq1 += 1
 
             self.logger.info('New segment arrived from the {}.'.format(
                 'initiator' if direction == 0 else 'accepter'))
@@ -362,14 +365,14 @@ class UtpTracer(object):
                     if seq == flow.seq0:
                         self.new_segment(flow, direction, payload)
                         self.logger.info('Pending segment added: {} byte(s)'.format(len(payload)))
-                        flow.seq0 = (flow.seq0 + 1) % 0xffff
+                        flow.seq0 += 1
                         added_some = True
                         removed.append(i)
                 else:
                     if seq == flow.seq1:
                         self.new_segment(flow, direction, payload)
                         self.logger.info('Pending segment added: {} byte(s)'.format(len(payload)))
-                        flow.seq1 = (flow.seq1 + 1) % 0xffff
+                        flow.seq1 += 1
                         added_some = True
                         removed.append(i)
                 i += 1
