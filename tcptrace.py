@@ -258,6 +258,9 @@ class TcpTracer(object):
                     flow.state if flow else CS_INIT, flags, flow != None))
 
     def add_segment(self, flow, direction, payload, seq):
+        if len(payload) == 0:
+            return
+
         fseq = flow.seq0 if direction == 0 else flow.seq1
         if seq == fseq:
             self.new_segment(flow, direction, payload)
