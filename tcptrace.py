@@ -77,7 +77,7 @@ class TcpTracer(object):
         self.new_flow(flow)
 
     @on_state(CS_INITIATOR_SENT_SYN)
-    def actin(self, flow, payload, src, sport, dst, dport, flags, seq):
+    def action(self, flow, payload, src, sport, dst, dport, flags, seq):
         if flow.tup == (dst, dport, src, sport):
             if flags & FG_SYN and flags & FG_ACK:
                 flow.state = CS_SYN_ACKED
