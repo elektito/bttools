@@ -275,7 +275,6 @@ class TcpTracer(object):
         elif seq > fseq:
             flow.pending.append((payload, seq, direction))
             self.logger.debug('Out of order packet. Added to pending list.')
-            print seq, fseq
         else: # seq < fseq
             self.logger.debug('Duplicate packet. Ignored.')
 
@@ -366,4 +365,6 @@ if __name__ == '__main__':
     print 'Remaining flows:', tracer.added - tracer.closed
     print 'Segments arrived:', tracer.segments
     print 'Total bytes:', tracer.data
-    print 'Pending packets:', sum(len(f.pending) for f in tracer.flows.values())
+    print 'Pending packets: {} ({} bytes)'.format(
+        sum(len(f.pending) for f in tracer.flows.values()),
+        sum(sum(len(p[0]) for p in f.pending) for f in tracer.flows.values()))
