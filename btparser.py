@@ -2,6 +2,7 @@
 
 import bencode
 
+import argparse
 import logging
 import sys
 import struct
@@ -299,17 +300,63 @@ class BitTorrentParser(object):
 class MyBitTorrentParser(BitTorrentParser):
     pass
 
-def main():
-    filename = sys.argv[1]
+def parse_file(filename, parser):
     with open(filename) as f:
         stream = f.read()
-
-    parser = MyBitTorrentParser()
 
     try:
         parser.parse_stream(stream)
     except BitTorrentParserError as e:
-        print 'Error:', e
+        print 'Error: {}'.format(e)
+
+def parse_directory(directory, parser):
+    import os
+
+    for filename in os.listdir(directory):
+        parse_file(directory + '/' + filename)
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='A program for parsing and analyzing BitTorrent streams.')
+    parser.add_argument(
+        '-t', '--torrent', action='append',
+        help='A torrent file to read and use in processing. '
+        'The pieces with an infohash matching this file are checked'
+        'against the hashes in this file. Can be specified multiple times.')
+    parser.add_argument(
+        '-d', '--directory',
+        help='A directory to read the streams from.')
+    parser.add_argument(
+        '-f', '--filename',
+        help='A file containing a BitTorrent stream.')
+    args = parser.parse_args()
+
+    if args.filename and args.directory:
+        print 'Only one of -f and -d can be used.'
+        exit(1)
+
+    if not args.filename and not args.directory:
+        print 'Either -d or -f must be specified.'
+        exit(1)
+
+    btparser = MyBitTorrentParser()
+    logger = logging.getLogger('btparser')
+    if args.directory:
+        handler = logging.NullHandler()
+        logger.addHandler(handler)
+        btparser.logger = logger
+
+    for tf in args.torrent:
+        with open(tf) as f:
+            btparser.add_info(bencode.bdecode(f.read())['info'])
+
+    if args.filename:
+        parse_file(args.filename, btparser)
+
+    if args.directory:
+        parse_directory(args.directory, btparser)
+
+    return
 
 if __name__ == '__main__':
     main()
