@@ -365,7 +365,7 @@ def parse_file(filename, parser):
     try:
         parser.parse_stream(stream)
     except BitTorrentParserError as e:
-        print 'Error: {}'.format(e)
+        parser.logger.error(str(e))
 
 def parse_directory(directory, parser):
     import os
@@ -382,10 +382,11 @@ def parse_directory(directory, parser):
             logger.error('Error: {}'.format(e))
         size = parser.n - prev
         if size > 0:
-            print '{:50}{:15}/{}'.format(filename, size, os.path.getsize(directory + '/' + filename))
+            parser.logger.info('{:50}{:15}/{}'.format(
+                filename, size, os.path.getsize(directory + '/' + filename)))
             total += size
 
-    print 'Total:', total
+    parser.logger.info('Total: {}'.format(total))
 
 def main():
     parser = argparse.ArgumentParser(
@@ -401,6 +402,9 @@ def main():
     parser.add_argument(
         '-f', '--filename',
         help='A file containing a BitTorrent stream.')
+    parser.add_argument(
+        '-l', '--log-file', dest='log_file',
+        help='The file to log to. Defaults to stdout.')
     args = parser.parse_args()
 
     if args.filename and args.directory:
@@ -413,10 +417,12 @@ def main():
 
     btparser = MyBitTorrentParser()
     logger = logging.getLogger('btparser')
-    if args.directory:
-        handler = logging.NullHandler()
-        logger.addHandler(handler)
-        btparser.logger = logger
+    if args.log_file:
+        handler = logging.FileHandler(args.log_file, 'w')
+    else:
+        handler = logging.StreamHandler()
+    logger.addHandler(handler)
+    btparser.logger = logger
 
     for tf in args.torrent:
         with open(tf) as f:
