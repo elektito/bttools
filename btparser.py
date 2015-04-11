@@ -380,7 +380,8 @@ def parse_directory(directory, parser):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='A program for parsing and analyzing BitTorrent streams.')
+        description='A program for parsing and analyzing BitTorrent streams.',
+        epilog='Either -d or -f (but not both) must be used.')
     parser.add_argument(
         '-t', '--torrent', action='append',
         help='A torrent file to read and use in processing. '
