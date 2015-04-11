@@ -157,6 +157,17 @@ class UtpTracer(object):
         self.flows[src, sport, dst, dport] = flow
         self.new_flow(flow)
 
+    @on_state(CS_SYN_ACKED)
+    @on_packet_type(ST_FIN)
+    @on_existing_flow(True)
+    def action(self, flow, payload, src, sport, dst, dport, connid, seq):
+        if (src, sport, dst, dport) == flow.tup[:-1]:
+            flow.state = CS_INITIATOR_SENT_FIN
+            self.logger.debug('Initiator sent FIN before the connection was completely established.')
+        elif (dst, dport, src, sport) == flow.tup[:-1]:
+            flow.state = CS_ACCEPTER_SENT_FIN
+            self.logger.debug('Accepter sent FIN before the connection was completely established.')
+
     @on_state([CS_SYN_ACKED, CS_CONNECTED])
     @on_packet_type(ST_DATA)
     @on_existing_flow(True)
@@ -287,6 +298,21 @@ class UtpTracer(object):
             self.flow_closed(flow)
             del self.flows[flow.tup]
             self.logger.info('Flow closed.')
+
+    @on_state(CS_INITIATOR_SENT_FIN)
+    @on_state(CS_ACCEPTER_SENT_FIN)
+    @on_state(CS_INITIATOR_FIN_ACKED)
+    @on_state(CS_ACCEPTER_FIN_ACKED)
+    @on_state(CS_BOTH_SENT_FIN)
+    @on_state(CS_BOTH_SENT_FIN_INITIATOR_ACKED)
+    @on_state(CS_BOTH_SENT_FIN_ACCEPTER_ACKED)
+    @on_packet_type(ST_DATA)
+    @on_existing_flow(True)
+    def action(self, flow, payload, src, sport, dst, dport, connid, seq):
+        if (src, sport, dst, dport) == flow.tup[:-1]:
+            self.add_segment(flow, 0, payload, seq)
+        else:
+            self.add_segment(flow, 1, payload, seq)
 
     def trace(self, pkt):
         assert isinstance(pkt[0], Ether) and \
