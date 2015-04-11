@@ -107,14 +107,20 @@ class BitTorrentParser(object):
 
     @register_extended_message('lt_tex')
     def parse_message_lt_pex(self, stream, n, length):
-        lt_tex = bencode.bdecode(stream[n+6:n+length+4])
+        try:
+            lt_tex = bencode.bdecode(stream[n+6:n+length+4])
+        except bencode.BTL.BTFailure:
+            raise InvalidBitTorrentStreamError()
         self.logger.info('[MESSAGE] [EXTENDED] lt_tex: announced {} tracker(s).'.format(
             len(lt_tex['added'])))
         self.__new_extended_message('lt_pex', added=lt_tex['added'])
 
     @register_extended_message('ut_pex')
     def parse_message_ut_pex(self, stream, n, length):
-        ut_pex = bencode.bdecode(stream[n+6:n+length+4])
+        try:
+            ut_pex = bencode.bdecode(stream[n+6:n+length+4])
+        except bencode.BTL.BTFailure:
+            raise InvalidBitTorrentStreamError()
         added = ut_pex['added']
         prefer_encryption = len([i for i in ut_pex['added.f'] if ord(i) & 0x01 == 1])
         seeders = len([i for i in ut_pex['added.f'] if ord(i) & 0x02 == 1])
