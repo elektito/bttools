@@ -245,6 +245,13 @@ class UtpTracer(object):
         if (dst, dport, src, sport) == flow.tup:
             flow.state = CS_BOTH_SENT_FIN
 
+    @on_state(CS_ACCEPTER_SENT_FIN)
+    @on_packet_type(ST_FIN)
+    @on_existing_flow(True)
+    def action(self, flow, payload, src, sport, dst, dport, connid, seq):
+        if (src, sport, dst, dport) == flow.tup[:-1]:
+            flow.state = CS_BOTH_SENT_FIN
+
     @on_state(CS_BOTH_SENT_FIN)
     @on_packet_type(ST_STATE)
     @on_existing_flow(True)
