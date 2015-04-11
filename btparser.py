@@ -312,8 +312,22 @@ def parse_file(filename, parser):
 def parse_directory(directory, parser):
     import os
 
+    total = 0
     for filename in os.listdir(directory):
-        parse_file(directory + '/' + filename)
+        with open(directory + '/' + filename) as f:
+            stream = f.read()
+
+        prev = parser.n
+        try:
+            parser.parse_stream(stream)
+        except BitTorrentParserError as e:
+            logger.error('Error: {}'.format(e))
+        size = parser.n - prev
+        if size > 0:
+            print '{:50}{:15}/{}'.format(filename, size, os.path.getsize(directory + '/' + filename))
+            total += size
+
+    print 'Total:', total
 
 def main():
     parser = argparse.ArgumentParser(
