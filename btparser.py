@@ -307,7 +307,7 @@ class MyBitTorrentParser(BitTorrentParser):
     def __init__(self):
         super(MyBitTorrentParser, self).__init__()
         self.pieces = defaultdict(list)
-        self.n = 0
+        self.current_pieces_size = 0
 
     def new_message(self, name, **attrs):
         if name != 'piece':
@@ -317,8 +317,7 @@ class MyBitTorrentParser(BitTorrentParser):
         begin = attrs['begin']
         data = attrs['data']
 
-        self.n += len(attrs['data'])
-
+        self.current_pieces_size += len(data)
         self.pieces[(self.current_infohash, index)].append((data, begin))
         self.check_piece(index)
 
@@ -359,34 +358,25 @@ class MyBitTorrentParser(BitTorrentParser):
             del self.pieces[(self.current_infohash, index)]
 
 def parse_file(filename, parser):
+    parser.logger.info('[NEW FILE] {}'.format(filename))
     with open(filename) as f:
         stream = f.read()
 
     try:
+        parser.current_pieces_size = 0
         parser.parse_stream(stream)
     except BitTorrentParserError as e:
         parser.logger.error(str(e))
 
+    parser.logger.info(
+        '{} bytes of piece data in a stream of {} bytes.'.format(
+            parser.current_pieces_size,
+            len(stream)))
+
 def parse_directory(directory, parser):
     import os
-
-    total = 0
     for filename in os.listdir(directory):
-        with open(directory + '/' + filename) as f:
-            stream = f.read()
-
-        prev = parser.n
-        try:
-            parser.parse_stream(stream)
-        except BitTorrentParserError as e:
-            logger.error('Error: {}'.format(e))
-        size = parser.n - prev
-        if size > 0:
-            parser.logger.info('{:50}{:15}/{}'.format(
-                filename, size, os.path.getsize(directory + '/' + filename)))
-            total += size
-
-    parser.logger.info('Total: {}'.format(total))
+        parse_file(directory + '/' + filename, parser)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -421,12 +411,18 @@ def main():
         handler = logging.FileHandler(args.log_file, 'w')
     else:
         handler = logging.StreamHandler()
+    formatter = logging.Formatter('[%(levelname)s][%(msg)s]')
+    handler.setFormatter(formatter)
     logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
     btparser.logger = logger
 
-    for tf in args.torrent:
-        with open(tf) as f:
-            btparser.add_info(bencode.bdecode(f.read())['info'])
+    if args.torrent:
+        for tf in args.torrent:
+            with open(tf) as f:
+                btparser.add_info(bencode.bdecode(f.read())['info'])
+    else:
+        logger.warning('No torrent files specified.')
 
     if args.filename:
         parse_file(args.filename, btparser)
