@@ -35,7 +35,7 @@ class UtpFlow(object):
         self.initiator_port = initiator_port
         self.accepter_ip = accepter_ip
         self.accepter_port = accepter_port
-        self.tup = (initiator_ip, initiator_port, accepter_ip, accepter_port)
+        self.tup = (initiator_ip, initiator_port, accepter_ip, accepter_port, connid)
         self.connid = connid
         self.seq0 = seq0
         self.seq1 = 0
@@ -124,14 +124,14 @@ class UtpTracer(object):
     @on_existing_flow(False)
     def action(self, flow, payload, src, sport, dst, dport, connid, seq):
         flow = UtpFlow(src, sport, dst, dport, connid, seq + 1)
-        self.flows[src, sport, dst, dport] = flow
+        self.flows[src, sport, dst, dport, connid] = flow
         self.new_flow(flow)
 
     @on_state(CS_HANDSHAKE)
     @on_packet_type(ST_STATE)
     @on_existing_flow(True)
     def action(self, flow, payload, src, sport, dst, dport, connid, seq):
-        if (src, sport, dst, dport) == flow.tup:
+        if (src, sport, dst, dport) == flow.tup[:-1]:
             self.logger.warning('Expected SYN ACK. Ignored.')
             return
 
@@ -143,7 +143,7 @@ class UtpTracer(object):
     @on_packet_type(ST_SYN)
     @on_existing_flow(True)
     def action(self, flow, payload, src, sport, dst, dport, connid, seq):
-        if (src, sport, dst, dport) == flow.tup:
+        if (src, sport, dst, dport) == flow.tup[:-1]:
             self.logger.debug('Duplicate SYN.')
             return
 
@@ -151,10 +151,10 @@ class UtpTracer(object):
             'Two peers trying simultaneously to initiate a connection. '
             'Letting the second one win.')
         self.flow_closed(flow)
-        del self.flows[dst, dport, src, sport]
+        del self.flows[dst, dport, src, sport, connid]
 
         flow = UtpFlow(src, sport, dst, dport, connid, seq + 1)
-        self.flows[src, sport, dst, dport] = flow
+        self.flows[src, sport, dst, dport, connid] = flow
         self.new_flow(flow)
 
     @on_state(CS_SYN_ACKED)
@@ -172,10 +172,10 @@ class UtpTracer(object):
     @on_packet_type(ST_DATA)
     @on_existing_flow(True)
     def action(self, flow, payload, src, sport, dst, dport, connid, seq):
-        if (src, sport, dst, dport) == flow.tup:
+        if (src, sport, dst, dport) == flow.tup[:-1]:
             self.add_segment(flow, 0, payload, seq)
             flow.state = CS_CONNECTED
-        elif (dst, dport, src, sport) == flow.tup:
+        elif (dst, dport, src, sport) == flow.tup[:-1]:
             self.add_segment(flow, 1, payload, seq)
             flow.state = CS_CONNECTED
         else:
@@ -199,7 +199,7 @@ class UtpTracer(object):
     @on_packet_type(ST_FIN)
     @on_existing_flow(True)
     def action(self, flow, payload, src, sport, dst, dport, connid, seq):
-        if (src, sport, dst, dport) == flow.tup:
+        if (src, sport, dst, dport) == flow.tup[:-1]:
             flow.state = CS_INITIATOR_SENT_FIN
             self.logger.debug('Initiator sent FIN.')
         else:
@@ -217,7 +217,7 @@ class UtpTracer(object):
     @on_packet_type(ST_STATE)
     @on_existing_flow(True)
     def action(self, flow, payload, src, sport, dst, dport, connid, seq):
-        if (dst, dport, src, sport) == flow.tup:
+        if (dst, dport, src, sport) == flow.tup[:-1]:
             flow.state = CS_ACCEPTER_FIN_ACKED
             self.logger.debug('Accepter FIN acked.')
 
@@ -225,21 +225,21 @@ class UtpTracer(object):
     @on_packet_type(ST_FIN)
     @on_existing_flow(True)
     def action(self, flow, payload, src, sport, dst, dport, connid, seq):
-        if (src, sport, dst, dport) == flow.tup:
+        if (src, sport, dst, dport) == flow.tup[:-1]:
             flow.state = CS_BOTH_SENT_FIN_INITIATOR_ACKED
 
     @on_state(CS_ACCEPTER_FIN_ACKED)
     @on_packet_type(ST_FIN)
     @on_existing_flow(True)
     def action(self, flow, payload, src, sport, dst, dport, connid, seq):
-        if (src, sport, dst, dport) == flow.tup:
+        if (src, sport, dst, dport) == flow.tup[:-1]:
             flow.state = CS_BOTH_SENT_FIN_ACCEPTER_ACKED
 
     @on_state(CS_BOTH_SENT_FIN_INITIATOR_ACKED)
     @on_packet_type(ST_STATE)
     @on_existing_flow(True)
     def action(self, flow, payload, src, sport, dst, dport, connid, seq):
-        if (dst, dport, src, sport) != flow.tup:
+        if (dst, dport, src, sport) != flow.tup[:-1]:
             return
 
         if len(flow.pending) > 0:
@@ -253,7 +253,7 @@ class UtpTracer(object):
     @on_packet_type(ST_FIN)
     @on_existing_flow(True)
     def action(self, flow, payload, src, sport, dst, dport, connid, seq):
-        if (dst, dport, src, sport) == flow.tup:
+        if (dst, dport, src, sport) == flow.tup[:-1]:
             flow.state = CS_BOTH_SENT_FIN
 
     @on_state(CS_ACCEPTER_SENT_FIN)
@@ -267,16 +267,16 @@ class UtpTracer(object):
     @on_packet_type(ST_STATE)
     @on_existing_flow(True)
     def action(self, flow, payload, src, sport, dst, dport, connid, seq):
-        if (src, sport, dst, dport) == flow.tup:
+        if (src, sport, dst, dport) == flow.tup[:-1]:
             flow.state = CS_BOTH_SENT_FIN_INITIATOR_ACKED
-        elif (dst, dport, src, sport) == flow.tup:
+        else:
             flow.state = CS_BOTH_SENT_FIN_ACCEPTER_ACKED
 
     @on_state(CS_BOTH_SENT_FIN_ACCEPTER_ACKED)
     @on_packet_type(ST_STATE)
     @on_existing_flow(True)
     def action(self, flow, payload, src, sport, dst, dport, connid, seq):
-        if (src, sport, dst, dport) != flow.tup:
+        if (src, sport, dst, dport) != flow.tup[:-1]:
             return
 
         if len(flow.pending) > 0:
@@ -290,9 +290,9 @@ class UtpTracer(object):
     @on_packet_type(ST_DATA)
     @on_existing_flow(True)
     def action(self, flow, payload, src, sport, dst, dport, connid, seq):
-        if (src, sport, dst, dport) == flow.tup:
+        if (src, sport, dst, dport) == flow.tup[:-1]:
             self.add_segment(flow, 0, payload, seq)
-        elif (dst, dport, src, sport) == flow.tup:
+        else:
             self.add_segment(flow, 1, payload, seq)
         if len(flow.pending) == 0:
             self.flow_closed(flow)
@@ -346,17 +346,9 @@ class UtpTracer(object):
               (ord(payload[17]) << 0)
         seq = SerialNumber(seq, 16)
 
-        flow = self.flows.get((src, sport, dst, dport), None)
-        if flow:
-            if type != ST_SYN and connid != (flow.connid + 1) % 0xffff:
-                self.logger.warning('Invalid connid.')
-                return
-        else:
-            flow = self.flows.get((dst, dport, src, sport), None)
-            if flow:
-                if type != ST_SYN and connid != flow.connid:
-                    self.logger.warning('Invalid connid.')
-                    return
+        flow = self.flows.get((src, sport, dst, dport, connid - 1), None)
+        if not flow:
+            flow = self.flows.get((dst, dport, src, sport, connid), None)
 
         try:
             if flow:
