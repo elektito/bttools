@@ -411,7 +411,7 @@ def main():
         handler = logging.FileHandler(args.log_file, 'w')
     else:
         handler = logging.StreamHandler()
-    formatter = logging.Formatter('[%(levelname)s][%(msg)s]')
+    formatter = logging.Formatter('[%(levelname)s]\t%(msg)s')
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logger.setLevel(logging.DEBUG)
