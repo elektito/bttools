@@ -228,10 +228,12 @@ class BitTorrentParser(object):
         index = ntohl(struct.unpack('I', stream[n+5:n+9])[0])
         begin = ntohl(struct.unpack('I', stream[n+9:n+13])[0])
         block_size = length - 1 - 8
+        data = stream[n+13:n+13+length-1-8]
+        assert(len(data) == block_size)
         self.logger.info(
             '[MESSAGE] PIECE: index={} begin={} length={}'.format(
                 index, begin, block_size))
-        self.__new_message('piece', index=index, begin=begin, length=block_size)
+        self.__new_message('piece', index=index, begin=begin, data=data)
 
     @register_message(8)
     def parse_message_choke(self, stream, n, length):
