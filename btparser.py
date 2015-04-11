@@ -3,10 +3,12 @@
 import bencode
 
 import argparse
+import hashlib
 import logging
 import sys
 import struct
 from socket import ntohl, ntohs
+from collections import defaultdict
 
 class BitTorrentParserError(Exception):
     pass
@@ -46,6 +48,8 @@ def register_extended_message(n):
 class BitTorrentParser(object):
     def __init__(self):
         self.infos = {}
+        self.current_infohash = ''
+        self.current_peerid = ''
 
         self.logger = logging.getLogger('utptrace')
         self.logger.setLevel(logging.DEBUG)
@@ -53,7 +57,7 @@ class BitTorrentParser(object):
         self.logger.addHandler(handler)
 
     def add_info(self, info):
-        self.infos[str(hashlib.sha1(bencode.bencode(info)))] = info
+        self.infos[hashlib.sha1(bencode.bencode(info)).digest()] = info
 
     def parse_stream(self, stream):
         if len(stream) < 68:
@@ -61,6 +65,8 @@ class BitTorrentParser(object):
                 'The stream is less than 68 bytes long.')
 
         pstrlen, pstr, reserved, infohash, peerid = struct.unpack('!B19s8s20s20s', stream[:68])
+        self.current_infohash = infohash
+        self.current_peerid = peerid
 
         if pstrlen != 19 or pstr != 'BitTorrent protocol':
             msg = 'Stream does not contain BitTorrent data.'
@@ -298,7 +304,59 @@ class BitTorrentParser(object):
         pass
 
 class MyBitTorrentParser(BitTorrentParser):
-    pass
+    def __init__(self):
+        super(MyBitTorrentParser, self).__init__()
+        self.pieces = defaultdict(list)
+        self.n = 0
+
+    def new_message(self, name, **attrs):
+        if name != 'piece':
+            return
+
+        index = attrs['index']
+        begin = attrs['begin']
+        data = attrs['data']
+
+        self.n += len(attrs['data'])
+
+        self.pieces[(self.current_infohash, index)].append((data, begin))
+        self.check_piece(index)
+
+    def check_piece(self, index):
+        if self.current_infohash not in self.infos:
+            return
+
+        info = self.infos[self.current_infohash]
+        piece_length = info['piece length']
+
+        blocks = self.pieces[(self.current_infohash, index)]
+        blocks.sort(key=lambda r: r[1])
+
+        piece = ''
+        n = 0
+        while n < piece_length:
+            b = [i[0] for i in blocks if i[1] == n]
+            if b == []:
+                break
+
+            b = b[0]
+            piece += b
+
+            blocks = [i for i in blocks if i[1] != n]
+
+            n += len(b)
+
+        if len(piece) == piece_length:
+            self.logger.info('Piece complete: {}'.format(index))
+            got_hash = hashlib.sha1(piece).digest()
+            expected_hash = info['pieces'][index*20:index*20+20]
+
+            if got_hash == expected_hash:
+                self.logger.info('Hash match for piece: {}'.format(index))
+            else:
+                self.logger.warning('Hash did not match for piece: {}'.format(index))
+
+            del self.pieces[(self.current_infohash, index)]
 
 def parse_file(filename, parser):
     with open(filename) as f:
