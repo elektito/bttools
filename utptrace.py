@@ -438,10 +438,11 @@ class MyUtpTracer(UtpTracer):
             filename = self.filenames[flow.tup, direction]
             first_segment = False
         else:
-            filename = 'stream-{}-{}-{}-{}-{}'.format(
+            filename = 'stream-{}-{}-{}-{}-{}-{}'.format(
                 direction,
                 flow.initiator_ip, flow.initiator_port,
-                flow.accepter_ip, flow.accepter_port)
+                flow.accepter_ip, flow.accepter_port,
+                flow.connid)
             ext = ''
             n = 1
             while os.path.exists(filename + ext):
