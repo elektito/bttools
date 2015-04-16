@@ -392,17 +392,17 @@ class UtpTracer(object):
                         self.logger.info('Pending segment added: {} byte(s)'.format(len(payload)))
                         flow.seq0 += 1
                         added_some = True
-                        removed.append(i)
+                        removed.append(seq)
                 else:
                     if seq == flow.seq1:
                         self.new_segment(flow, direction, payload)
                         self.logger.info('Pending segment added: {} byte(s)'.format(len(payload)))
                         flow.seq1 += 1
                         added_some = True
-                        removed.append(i)
+                        removed.append(seq)
                 i += 1
 
-        flow.pending = [i for j, i in enumerate(flow.pending) if j not in flow.pending]
+        flow.pending = [i for i in flow.pending if i[1] not in removed]
 
     def trace_pcap(self, pcap_file):
         reader = RawPcapReader(pcap_file)
