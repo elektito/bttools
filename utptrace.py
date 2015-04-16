@@ -6,6 +6,7 @@ from serial import SerialNumber
 
 from scapy.all import RawPcapReader, Ether, IP, UDP
 import os
+import atexit
 
 ST_DATA = 0x0
 ST_FIN = 0x1
@@ -118,6 +119,9 @@ class UtpTracer(object):
         self.logger.setLevel(logging.DEBUG)
         handler = logging.StreamHandler(sys.stdout)
         self.logger.addHandler(handler)
+
+        self.file_buffers = {}
+        atexit.register(self.flush_all_buffers)
 
     @on_state(CS_INIT)
     @on_packet_type(ST_SYN)
@@ -452,8 +456,20 @@ class MyUtpTracer(UtpTracer):
             self.filenames[flow.tup, direction] = filename
             first_segment = True
 
-        with open(filename, 'w' if first_segment else 'a') as f:
-            f.write(segment)
+        if filename in self.file_buffers:
+            self.file_buffers[filename] = self.file_buffers[filename][0] + segment, \
+                                          self.file_buffers[filename][1]
+        else:
+            self.file_buffers[filename] = segment, True
+        if len(self.file_buffers[filename][0]) > 2**15:
+            with open(filename, 'w' if first_segment else 'a') as f:
+                f.write(self.file_buffers[filename][0])
+            self.file_buffers[filename] = '', False
+
+    def flush_all_buffers(self):
+        for filename, (buf, first_time) in self.file_buffers.items():
+            with open(filename, 'w' if first_time else 'a') as f:
+                f.write(buf)
 
     def flow_closed(self, flow):
         self.closed += 1
