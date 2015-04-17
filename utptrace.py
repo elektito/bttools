@@ -338,6 +338,16 @@ class UtpTracer(object):
             self.logger.debug('Invalid type. Not a UTP packet.')
             return
 
+        extension = ord(payload[1])
+        ext_len = 0
+        while extension != 0:
+            if len(payload) < 20 + ext_len + 1:
+                self.logger.debug('Invalid packet length. Not a UTP packet.')
+                return
+            extension = ord(payload[20 + ext_len])
+            length = ord(payload[20 + ext_len + 1])
+            ext_len += 2 + length
+
         connid = (ord(payload[2]) << 8) | \
                  (ord(payload[3]) << 0)
 
@@ -357,10 +367,10 @@ class UtpTracer(object):
         try:
             if flow:
                 state_machine[flow.state, type, True](
-                    self, flow, payload, src, sport, dst, dport, connid, seq)
+                    self, flow, payload[20 + ext_len:], src, sport, dst, dport, connid, seq)
             else:
                 state_machine[CS_INIT, type, False](
-                    self, flow, payload, src, sport, dst, dport, connid, seq)
+                    self, flow, payload[20 + ext_len:], src, sport, dst, dport, connid, seq)
         except KeyError as e:
             self.logger.debug(
                 'State not found in the state machine: state={} type={} existing={}'.format(
@@ -369,7 +379,7 @@ class UtpTracer(object):
     def add_segment(self, flow, direction, payload, seq):
         fseq = flow.seq0 if direction == 0 else flow.seq1
         if seq == fseq:
-            self.new_segment(flow, direction, payload[20:])
+            self.new_segment(flow, direction, payload)
 
             if direction == 0:
                 flow.seq0 += 1
@@ -379,7 +389,7 @@ class UtpTracer(object):
             self.logger.info('New segment arrived from the {}.'.format(
                 'initiator' if direction == 0 else 'accepter'))
         elif seq > fseq:
-            flow.pending.append((payload[20:], seq, direction))
+            flow.pending.append((payload, seq, direction))
             self.logger.debug('Out of order packet. Added to pending list.')
         else: # seq < fseq
             self.logger.debug('Duplicate packet. Ignored.')
