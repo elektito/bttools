@@ -83,7 +83,7 @@ class BitTorrentParser(object):
             n = self.parse_message(stream, n)
 
     def parse_message(self, stream, n):
-        if n + 4 > len(stream):
+        if n + 4 >= len(stream):
             raise UnexpectedEndOfStreamError()
 
         length = ntohl(struct.unpack('I', stream[n:n + 4])[0])
