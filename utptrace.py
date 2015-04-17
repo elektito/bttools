@@ -451,7 +451,6 @@ class MyUtpTracer(UtpTracer):
 
         if (flow.tup, direction) in self.filenames:
             filename = self.filenames[flow.tup, direction]
-            first_segment = False
         else:
             filename = 'stream-{}-{}-{}-{}-{}-{}'.format(
                 direction,
@@ -465,7 +464,6 @@ class MyUtpTracer(UtpTracer):
                 n += 1
             filename += ext
             self.filenames[flow.tup, direction] = filename
-            first_segment = True
 
         if filename in self.file_buffers:
             self.file_buffers[filename] = self.file_buffers[filename][0] + segment, \
@@ -473,7 +471,8 @@ class MyUtpTracer(UtpTracer):
         else:
             self.file_buffers[filename] = segment, True
         if len(self.file_buffers[filename][0]) > 2**15:
-            with open(filename, 'w' if first_segment else 'a') as f:
+            first_time = self.file_buffers[filename][1]
+            with open(filename, 'w' if first_time else 'a') as f:
                 f.write(self.file_buffers[filename][0])
             self.file_buffers[filename] = '', False
 
