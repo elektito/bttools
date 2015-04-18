@@ -95,7 +95,7 @@ def output_piece_info():
     for (index, infohash), blocks in sorted(all_pieces.items(), key=lambda r: (r[0], r[1])):
         print '[{}][PIECE {}]'.format(infohash, index)
 
-        print 'Total bytes communicated:\t{:,}'.format(
+        print 'Total bytes:\t{:,}'.format(
             sum(length for begin, length in blocks))
 
         # remove duplicated blocks
@@ -108,7 +108,7 @@ def output_piece_info():
         completed = sum(i[1] for i in blocks)
 
         piece_length = infos[infohash]['piece length']
-        print 'Completed:\t\t\t{:,}/{:,}'.format(completed, piece_length)
+        print 'Completed:\t{:,}/{:,}'.format(completed, piece_length)
 
         # construct the progress bar.
         if len(blocks) > 1:
@@ -123,7 +123,7 @@ def output_piece_info():
         if block_size > 0:
             pbar = ''.join('#' if len([0 for i in blocks if i[0] == n]) > 0 else '-'
                            for n in xrange(0, piece_length, block_size))
-            print 'Progress:\t\t\t[{}]'.format(pbar)
+            print 'Progress:\t[{}]'.format(pbar)
 
         print
 
