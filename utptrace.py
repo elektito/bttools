@@ -130,6 +130,7 @@ class UtpTracer(object):
     @on_existing_flow(False)
     def action(self, flow, payload, src, sport, dst, dport, connid, seq):
         flow = UtpFlow(src, sport, dst, dport, connid, seq + 1)
+        assert flow.tup not in self.flows
         self.flows[src, sport, dst, dport, connid] = flow
         self.new_flow(flow)
 
