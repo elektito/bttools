@@ -325,6 +325,9 @@ class MyTcpTracer(TcpTracer):
 
         self.filenames = {}
 
+        self.file_buffers = {}
+        atexit.register(self.flush_all_buffers)
+
     def new_flow(self, flow):
         self.logger.info('New flow.')
         self.added += 1
@@ -351,8 +354,20 @@ class MyTcpTracer(TcpTracer):
             self.filenames[flow.tup, direction] = filename
             first_segment = True
 
-        with open(filename, 'w' if first_segment else 'a') as f:
-            f.write(segment)
+        if filename in self.file_buffers:
+            self.file_buffers[filename] = self.file_buffers[filename][0] + segment, \
+                                          self.file_buffers[filename][1]
+        else:
+            self.file_buffers[filename] = segment, True
+        if len(self.file_buffers[filename][0]) > 2**15:
+            with open(filename, 'w' if first_segment else 'a') as f:
+                f.write(self.file_buffers[filename][0])
+            self.file_buffers[filename] = '', False
+
+    def flush_all_buffers(self):
+        for filename, (buf, first_time) in self.file_buffers.items():
+            with open(filename, 'w' if first_time else 'a') as f:
+                f.write(buf)
 
     def flow_closed(self, flow):
         self.closed += 1
