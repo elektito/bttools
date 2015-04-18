@@ -157,8 +157,7 @@ class UtpTracer(object):
         self.logger.warning(
             'Two peers trying simultaneously to initiate a connection. '
             'Letting the second one win.')
-        self.flow_closed(flow)
-        del self.flows[dst, dport, src, sport, connid]
+        self.flush_and_close(flow)
 
         flow = UtpFlow(src, sport, dst, dport, connid, seq + 1)
         self.flows[src, sport, dst, dport, connid] = flow
@@ -198,9 +197,8 @@ class UtpTracer(object):
     @on_packet_type(ST_RESET)
     @on_existing_flow(True)
     def action(self, flow, payload, src, sport, dst, dport, connid, seq):
-        self.flow_closed(flow)
-        del self.flows[flow.tup]
         self.logger.warning('Connection RESET.')
+        self.flush_and_close(flow)
 
     @on_state(CS_CONNECTED)
     @on_packet_type(ST_FIN)
@@ -252,9 +250,7 @@ class UtpTracer(object):
         if len(flow.pending) > 0:
             flow.state = CS_PENDING_CLOSE
         else:
-            self.flow_closed(flow)
-            del self.flows[flow.tup]
-            self.logger.info('Flow closed.')
+            self.flush_and_close(flow)
 
     @on_state(CS_INITIATOR_SENT_FIN)
     @on_packet_type(ST_FIN)
@@ -289,9 +285,7 @@ class UtpTracer(object):
         if len(flow.pending) > 0:
             flow.state = CS_PENDING_CLOSE
         else:
-            self.flow_closed(flow)
-            del self.flows[flow.tup]
-            self.logger.info('Flow closed.')
+            self.flush_and_close(flow)
 
     @on_state(CS_PENDING_CLOSE)
     @on_packet_type(ST_DATA)
@@ -302,9 +296,7 @@ class UtpTracer(object):
         else:
             self.add_segment(flow, 1, payload, seq)
         if len(flow.pending) == 0:
-            self.flow_closed(flow)
-            del self.flows[flow.tup]
-            self.logger.info('Flow closed.')
+            self.flush_and_close(flow)
 
     @on_state(CS_INITIATOR_SENT_FIN)
     @on_state(CS_ACCEPTER_SENT_FIN)
@@ -480,11 +472,7 @@ class MyUtpTracer(UtpTracer):
         self.logger.info('New flow.')
         self.added += 1
 
-    def new_segment(self, flow, direction, segment):
-        self.segments += 1
-        self.data += len(segment)
-        self.logger.info('{} byte(s) received.'.format(len(segment)))
-
+    def get_filename(self, flow, direction):
         if (flow.tup, direction) in self.filenames:
             filename = self.filenames[flow.tup, direction]
         else:
@@ -501,6 +489,15 @@ class MyUtpTracer(UtpTracer):
             filename += ext
             self.filenames[flow.tup, direction] = filename
 
+        return filename
+
+    def new_segment(self, flow, direction, segment):
+        self.segments += 1
+        self.data += len(segment)
+        self.logger.info('{} byte(s) received.'.format(len(segment)))
+
+        filename = self.get_filename(flow, direction)
+
         if filename in self.file_buffers:
             self.file_buffers[filename] = self.file_buffers[filename][0] + segment, \
                                           self.file_buffers[filename][1]
@@ -511,6 +508,23 @@ class MyUtpTracer(UtpTracer):
             with open(filename, 'w' if first_time else 'a') as f:
                 f.write(self.file_buffers[filename][0])
             self.file_buffers[filename] = '', False
+
+    def flush_and_close(self, flow):
+        for d in [0, 1]:
+            fn = self.get_filename(flow, d)
+            if fn in self.file_buffers:
+                buf, first_time = self.file_buffers[fn]
+                with open(fn, 'w' if first_time else 'a') as f:
+                    f.write(buf)
+
+                del self.file_buffers[fn]
+                if (flow.tup, d) in self.filenames:
+                    del self.filenames[flow.tup, d]
+
+        self.flow_closed(flow)
+        if flow.tup in self.flows:
+            del self.flows[flow.tup]
+        self.logger.info('Flow closed.')
 
     def flush_all_buffers(self):
         for filename, (buf, first_time) in self.file_buffers.items():
