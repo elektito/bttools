@@ -512,7 +512,7 @@ if __name__ == '__main__':
     tracer.trace_pcap(sys.argv[1])
     print 'Added flows:', tracer.added
     print 'Closed flows:', tracer.closed
-    print 'Remaining flows:', tracer.added - tracer.closed
+    print 'Remaining flows:', len(tracer.flows)
     print 'Segments arrived:', tracer.segments
     print 'Total bytes:', tracer.data
     print 'Pending packets:', sum(len(f.pending) for f in tracer.flows.values())
