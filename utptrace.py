@@ -4,7 +4,7 @@ logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
 from serial import SerialNumber
 
-from scapy.all import RawPcapReader, Ether, IP, UDP
+from scapy.all import RawPcapReader, Ether, IP, UDP, defragment
 import os
 import atexit
 
@@ -122,6 +122,8 @@ class UtpTracer(object):
 
         self.file_buffers = {}
         atexit.register(self.flush_all_buffers)
+
+        self.fragments = []
 
     @on_state(CS_INIT)
     @on_packet_type(ST_SYN)
@@ -420,13 +422,32 @@ class UtpTracer(object):
         flow.pending = [i for i in flow.pending if (i[1], i[2]) not in removed]
 
     def trace_pcap(self, pcap_file):
+        self.fragments = []
         reader = RawPcapReader(pcap_file)
         i = 1
         for pkt_data in reader:
             self.logger.info('{}'.format(i))
             i += 1
             p = Ether(pkt_data[0])
-            if isinstance(p[1], IP) and isinstance(p[2], UDP):
+
+            if not isinstance(p[1], IP):
+                continue
+
+            if p[IP].flags & 1 == 1 or p[IP].frag > 0:
+                self.logger.debug('Fragmented IPv4 packet encountered.')
+                self.fragments += p
+                self.fragments = defragment(self.fragments)
+                defragged = []
+                for f in self.fragments:
+                    if f[IP].flags & 1 == 0 and f[IP].frag == 0:
+                        defragged.append(f)
+                self.fragments = [f for f in self.fragments if f not in defragged]
+                for df in defragged:
+                    self.logger.debug('Defragmented packet.')
+                    if isinstance(df[2], UDP):
+                        tracer.trace(df)
+
+            elif isinstance(p[2], UDP):
                 tracer.trace(p)
 
 class MyUtpTracer(UtpTracer):
@@ -495,3 +516,4 @@ if __name__ == '__main__':
     print 'Segments arrived:', tracer.segments
     print 'Total bytes:', tracer.data
     print 'Pending packets:', sum(len(f.pending) for f in tracer.flows.values())
+    print 'Pending IPv4 fragments:', len(tracer.fragments)
