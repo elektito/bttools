@@ -321,6 +321,20 @@ class UtpTracer(object):
         else:
             self.add_segment(flow, 1, payload, seq)
 
+    @on_state(CS_INITIATOR_SENT_FIN)
+    @on_state(CS_ACCEPTER_SENT_FIN)
+    @on_state(CS_INITIATOR_FIN_ACKED)
+    @on_state(CS_ACCEPTER_FIN_ACKED)
+    @on_state(CS_BOTH_SENT_FIN)
+    @on_state(CS_BOTH_SENT_FIN_INITIATOR_ACKED)
+    @on_state(CS_BOTH_SENT_FIN_ACCEPTER_ACKED)
+    @on_packet_type(ST_SYN)
+    @on_existing_flow(True)
+    def action(self, flow, payload, src, sport, dst, dport, connid, seq):
+        self.flush_and_close(flow)
+        state_machine[CS_INIT, ST_SYN, False](
+            self, flow, payload, src, sport, dst, dport, connid, seq)
+
     def trace(self, pkt):
         assert isinstance(pkt[0], Ether) and \
             isinstance(pkt[1], IP) and \
@@ -363,7 +377,7 @@ class UtpTracer(object):
               (ord(payload[17]) << 0)
         seq = SerialNumber(seq, 16)
 
-        flow = self.flows.get((src, sport, dst, dport, connid - 1), None)
+        flow = self.flows.get((src, sport, dst, dport, connid if type == ST_SYN else connid - 1), None)
         if not flow:
             flow = self.flows.get((dst, dport, src, sport, connid), None)
 
