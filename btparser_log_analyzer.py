@@ -5,6 +5,7 @@ import bencode
 import hashlib
 import argparse
 import re
+import os
 from collections import defaultdict
 
 new_file_re = re.compile('\\[INFO\\]\t\\[NEW FILE\\] (.+)')
@@ -18,6 +19,9 @@ args = None
 files = {}
 all_pieces = defaultdict(list)
 infos = {}
+
+non_bt_files = 0
+non_bt_bytes = 0
 
 def parse_section(lines, n):
     result = new_file_re.match(lines[n][:-1])
@@ -63,6 +67,10 @@ def parse_section(lines, n):
                 if total_bytes > args.ignore_small:
                     if args.ignore_big == 0 or (args.ignore_big > 0 and total_bytes < args.ignore_big):
                         files[filename] = piece_bytes, total_bytes, infohash, pieces, errors
+            else:
+                global non_bt_files, non_bt_bytes
+                non_bt_files += 1
+                non_bt_bytes += os.path.getsize(filename)
 
             n += 1
             break
@@ -211,6 +219,7 @@ def main():
         piece_bytes_in_all_files,
         total_bytes_in_all_files,
         len(files))
+    print '{:,} bytes of non-BitTorrent data in {:,} files.'.format(non_bt_bytes, non_bt_files)
 
 if __name__ == '__main__':
     main()
