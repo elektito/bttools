@@ -261,7 +261,7 @@ class BitTorrentParser(object):
     @register_message(0x0d)
     def parse_message_suggest_piece(self, stream, n, length):
         index = ntohl(struct.unpack('I', stream[n+5:n+9])[0])
-        self.logger.info('[MESSAGE] SUGGEST PIECE: {}'.format(port))
+        self.logger.info('[MESSAGE] SUGGEST PIECE: {}'.format(index))
         self.__new_message('suggest_piece', index=index)
 
     @register_message(0x0e)
