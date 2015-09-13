@@ -113,14 +113,14 @@ class BitTorrentParser(object):
         self.__new_extended_message('upload_only', value=(payload[0] != '\x00'))
 
     @register_extended_message('lt_tex')
-    def parse_message_lt_pex(self, stream, n, length):
+    def parse_message_lt_tex(self, stream, n, length):
         try:
             lt_tex = bencode.bdecode(stream[n+6:n+length+4])
         except bencode.BTL.BTFailure:
             raise InvalidBitTorrentStreamError()
         self.logger.info('[MESSAGE] [EXTENDED] lt_tex: announced {} tracker(s).'.format(
             len(lt_tex['added'])))
-        self.__new_extended_message('lt_pex', added=lt_tex['added'])
+        self.__new_extended_message('lt_tex', added=lt_tex['added'])
 
     @register_extended_message('ut_pex')
     def parse_message_ut_pex(self, stream, n, length):
