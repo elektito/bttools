@@ -134,10 +134,12 @@ class BitTorrentParser(object):
         self.logger.info(
             '[MESSAGE] [EXTENDED] ut_pex: added {} peers ({} prefer(s) '
             'encryption; {} is/are seeder(s)). dropped {}.'.format(
-                len(added),
+                len(added) / 6, # In compact form, each 6 bytes
+                                # represents an IPv4 address and a
+                                # port number.
                 prefer_encryption,
                 seeders,
-                len(ut_pex['dropped'])))
+                len(ut_pex['dropped']) / 6))
 
         if all(k in ut_pex for k in ['added6', 'added6.f', 'dropped6']) and \
            (len(ut_pex['added6']) > 0 or len(ut_pex['dropped6']) > 0):
@@ -148,10 +150,12 @@ class BitTorrentParser(object):
                 '[MESSAGE] [EXTENDED]         also added {} IPv6 peers '
                 '({} prefer(s) encryption; {} is/are seeder(s)). '
                 'dropped {}.'.format(
-                    len(added),
+                    len(added) / 18, # In compact form, each 18 bytes
+                                     # represents an IPv6 address and
+                                     # a port number.
                     prefer_encryption,
                     seeders,
-                    len(ut_pex['dropped6'])))
+                    len(ut_pex['dropped6']) / 18))
 
         self.__new_extended_message('ut_pex', value=ut_pex)
 
