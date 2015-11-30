@@ -105,6 +105,27 @@ class BitTorrentParser(object):
 
         return n + length + 4
 
+    @register_extended_message('ut_metadata')
+    def parse_message_ut_metadata(self, stream, n, length):
+        try:
+            ut_metadata = bencode.bdecode(stream[n+6:n+length+4])
+        except bencode.BTL.BTFailure:
+            raise InvalidBitTorrentStreamError()
+        if ut_metadata['msg_type'] == 0:
+            self.logger.info(
+                '[MESSAGE] [EXTENDED] ut_metadata: request for piece {}'.format(
+                    ut_metadata['piece']))
+        elif ut_metadata['msg_type'] == 1:
+            size = length - 2 - bencode.bencode(ut_metadata)
+            self.logger.info(
+                '[MESSAGE] [EXTENDED] ut_metadata: piece {} of size {}'.format(
+                    ut_metadata['piece'], size))
+        elif ut_metadata['msg_type'] == 2:
+            self.logger.info(
+                '[MESSAGE] [EXTENDED] ut_metadata: reject request for piece {}'.format(
+                    ut_metadata['piece']))
+        self.__new_extended_message('ut_metadata', piece=ut_metadata['piece'])
+
     @register_extended_message('upload_only')
     def parse_message_upload_only(self, stream, n, length):
         payload = stream[n+6:n+length+4]
