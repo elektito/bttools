@@ -181,6 +181,7 @@ class BitTorrentParser(object):
         elif id in extended_message_associtions:
             name = extended_message_associtions[id]
             if name not in extended_message_parsers:
+                self.logger.info('[MESSAGE][EXTENDED] "{}" message.'.format(name))
                 self.new_extended_message(name)
                 return
             extended_message_parsers[name](self, stream, n - 6, length)
