@@ -4,6 +4,9 @@ logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
 from serial import SerialNumber
 
+import scapy.data
+scapy.data.MTU = 65536
+
 from scapy.all import RawPcapReader, Ether, IP, TCP, defragment
 import os
 import atexit
